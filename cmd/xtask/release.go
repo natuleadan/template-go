@@ -26,8 +26,9 @@ func runRelease(root string, args []string) error {
 		}
 		re := regexp.MustCompile(`const Version = "[^"]+"`)
 		updatedCore := re.ReplaceAllString(string(coreRaw), fmt.Sprintf(`const Version = %q`, nextVer))
-		if err := os.WriteFile(corePath, []byte(updatedCore), 0o644); err != nil {
-			return err
+		writeErr := os.WriteFile(corePath, []byte(updatedCore), 0o644)
+		if writeErr != nil {
+			return writeErr
 		}
 		changelogPath := filepath.Join(root, "CHANGELOG.md")
 		changelogRaw, err := os.ReadFile(changelogPath)
@@ -53,12 +54,38 @@ func runRelease(root string, args []string) error {
 	if !semverRe.MatchString(ver) {
 		return fmt.Errorf("invalid VERSION %q", ver)
 	}
-	changelog, err := os.ReadFile(filepath.Join(root, "CHANGELOG.md"))
+	changelogBytes, err := os.ReadFile(filepath.Join(root, "CHANGELOG.md"))
 	if err != nil {
 		return err
 	}
-	if !strings.Contains(string(changelog), fmt.Sprintf("## %s", ver)) {
+	changelog := string(changelogBytes)
+	heading := fmt.Sprintf("## %s", ver)
+	if !strings.Contains(changelog, heading) {
 		return fmt.Errorf("CHANGELOG.md missing section for %s", ver)
 	}
+
+	if len(args) >= 2 && args[0] == "--notes" {
+		notes := extractChangelogSection(changelog, heading)
+		outPath := args[1]
+		if !filepath.IsAbs(outPath) {
+			outPath = filepath.Join(root, outPath)
+		}
+		if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(outPath, []byte(notes+"\n"), 0o644)
+	}
 	return nil
+}
+
+func extractChangelogSection(changelog, heading string) string {
+	idx := strings.Index(changelog, heading)
+	if idx < 0 {
+		return heading
+	}
+	rest := changelog[idx:]
+	if nextIdx := strings.Index(rest[len(heading):], "\n## "); nextIdx >= 0 {
+		return strings.TrimSpace(rest[:len(heading)+nextIdx])
+	}
+	return strings.TrimSpace(rest)
 }

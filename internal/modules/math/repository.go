@@ -9,6 +9,8 @@ type Repository interface {
 	List() []CalculationEntry
 }
 
+var _ Repository = (*InMemoryRepository)(nil)
+
 // InMemoryRepository stores calculation entries in memory.
 type InMemoryRepository struct {
 	mu      sync.Mutex

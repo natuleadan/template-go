@@ -37,7 +37,22 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - run: go run ./cmd/xtask validate
+      - name: Cache golangci-lint binary
+        id: cache-golangci
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/golangci-lint
+          key: golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.15.0
+      - name: Install pinned golangci-lint
+        if: steps.cache-golangci.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$HOME/go/bin"
+          curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b "$HOME/go/bin" v2.15.0
+          "$HOME/go/bin/golangci-lint" --version
+      - name: Run native Go validation suite
+        run: |
+          export PATH="$HOME/go/bin:$PATH"
+          go run ./cmd/xtask validate
 
   release:
     name: Tag & Release

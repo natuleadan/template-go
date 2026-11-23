@@ -39,7 +39,7 @@ func TestUnitMathModule(t *testing.T) {
 }
 
 func TestIntegrationHealthEndpoint(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req := httptest.NewRequest(http.MethodGet, "/health", http.NoBody)
 	rec := httptest.NewRecorder()
 	NewMux().ServeHTTP(rec, req)
 
@@ -56,7 +56,7 @@ func TestIntegrationHealthEndpoint(t *testing.T) {
 }
 
 func TestIntegrationMathAddEndpoint(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/math/add?a=15&b=27", nil)
+	req := httptest.NewRequest(http.MethodGet, "/math/add?a=15&b=27", http.NoBody)
 	rec := httptest.NewRecorder()
 	NewMux().ServeHTTP(rec, req)
 
@@ -120,5 +120,111 @@ func TestArchitectureModularLayerBoundaries(t *testing.T) {
 	}
 	if strings.Contains(controller, "Repository") {
 		t.Fatal("controller leaked repository")
+	}
+}
+
+func TestArchitectureLocksImmutableLintPolicy(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "cmd", "xtask", "lint.go"))
+	if err != nil {
+		t.Fatalf("failed reading lint.go: %v", err)
+	}
+	lintSrc := string(raw)
+	requiredRules := []string{
+		`"unsafe"`,
+		`panic`,
+		`fmt`,
+		`os`,
+		`log`,
+		`"init"`,
+		`InterfaceType`,
+		`"bool"`,
+		`context`,
+		`Sleep`,
+		`IsExported`,
+		`//nolint`,
+		`mutable package var`,
+		`golangci-lint`,
+		`.golangci.yml`,
+		`TypeAssertExpr`,
+		`Mutex`,
+		`500`,
+	}
+	for _, token := range requiredRules {
+		if !strings.Contains(lintSrc, token) {
+			t.Fatalf("cmd/xtask/lint.go missing immutable policy rule: %s", token)
+		}
+	}
+}
+
+func TestArchitectureRaceDetectorAndCooldownPolicy(t *testing.T) {
+	mainRaw, err := os.ReadFile(filepath.Join("..", "..", "cmd", "xtask", "main.go"))
+	if err != nil {
+		t.Fatalf("failed reading main.go: %v", err)
+	}
+	if !strings.Contains(string(mainRaw), `"-race"`) {
+		t.Fatal("cmd/xtask/main.go must run tests with -race enabled")
+	}
+
+	depRaw, err := os.ReadFile(filepath.Join("..", "..", ".github", "dependabot.yml"))
+	if err != nil {
+		t.Fatalf("failed reading dependabot.yml: %v", err)
+	}
+	if !strings.Contains(string(depRaw), "default-days: 3") {
+		t.Fatal("dependabot.yml must enforce default-days: 3")
+	}
+
+	for _, forbidden := range []string{".prettierrc", "package.json"} {
+		if _, statErr := os.Stat(filepath.Join("..", "..", forbidden)); statErr == nil {
+			t.Fatalf("forbidden formatter or js artifact present: %s", forbidden)
+		}
+	}
+}
+
+func TestArchitectureLocksGolangciPolicy(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", ".golangci.yml"))
+	if err != nil {
+		t.Fatalf("failed reading .golangci.yml: %v", err)
+	}
+	cfg := string(raw)
+	for _, token := range []string{`version: "2"`, `default: none`, `enable: []`, `formatters:`} {
+		if !strings.Contains(cfg, token) {
+			t.Fatalf(".golangci.yml missing immutable policy token: %s", token)
+		}
+	}
+	for _, formatter := range []string{"gofmt", "goimports", "gofumpt", "gci", "golines", "swaggo"} {
+		if strings.Contains(cfg, formatter) {
+			t.Fatalf(".golangci.yml must never enable formatter %s", formatter)
+		}
+	}
+	for _, linter := range []string{"bodyclose", "contextcheck", "errcheck", "errorlint", "exhaustive", "forbidigo", "gocritic", "gosec", "govet", "nilerr", "prealloc", "revive", "staticcheck", "unconvert", "wrapcheck"} {
+		if !strings.Contains(cfg, linter) {
+			t.Fatalf(".golangci.yml missing semantic linter %s", linter)
+		}
+	}
+	for _, option := range []string{"check-type-assertions: true", "check-blank: true", "default-signifies-exhaustive: true", "enable-all: true"} {
+		if !strings.Contains(cfg, option) {
+			t.Fatalf(".golangci.yml missing locked option: %s", option)
+		}
+	}
+}
+
+func TestArchitectureForbidsFormattersInHooksAndCI(t *testing.T) {
+	for _, rel := range []string{".githooks/pre-commit", ".githooks/pre-push", ".github/workflows/validate.yml"} {
+		raw, err := os.ReadFile(filepath.Join("..", "..", rel))
+		if err != nil {
+			t.Fatalf("failed reading %s: %v", rel, err)
+		}
+		for _, forbidden := range []string{"gofmt", "goimports", "gofumpt", "golangci-lint fmt", "latest"} {
+			if strings.Contains(string(raw), forbidden) {
+				t.Fatalf("%s must never invoke %s", rel, forbidden)
+			}
+		}
+	}
+	validateRaw, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "validate.yml"))
+	if err != nil {
+		t.Fatalf("failed reading validate.yml: %v", err)
+	}
+	if !strings.Contains(string(validateRaw), "v2.15.0") {
+		t.Fatal("validate.yml must pin golangci-lint v2.15.0")
 	}
 }

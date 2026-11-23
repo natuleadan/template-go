@@ -5,6 +5,7 @@ Production-ready pure-Go repository template featuring a native `cmd/xtask` vali
 ## Key Features
 
 - **100% Native Go Tooling**: Powered by `go run ./cmd/xtask` and standard library checks with zero Node.js or external script dependencies.
+- **Strict AST & Concurrency Safety Lock**: Runs `go vet ./...`, pure-Go `go/ast` guardrails (forbidding `"unsafe"`, `init()`, `panic()`, `fmt.Print*`, `os.Exit`, `log.Fatal*`, `interface{}`, mutable globals, and boolean flag parameters), and `-race` tests; `internal/core/core_test.go` locks all policy rules against weakening.
 - **Layered Modular Architecture**: Reference domain module (`internal/modules/math/`) separating `entity`, `dto`, `repository`, `service`, `controller`, and `module` layers with automated boundary tests.
 - **Eight Standardized Validation Gates**: `lint`, `typecheck`, `unit tests`, `integration and architecture tests`, `cooldown`, `hygiene`, `notices`, and `release`.
 - **Supply-Chain Hardening**: 3-day dependency cooldown policy (`.github/dependabot.yml` `default-days: 3`, no `replace` or `@latest` directives), CodeQL static analysis, and automated SBOM/dependency inventory artifacts.
@@ -51,10 +52,10 @@ go run ./cmd/xtask release --check  # Verify VERSION matches CHANGELOG.md
 
 | Gate | Implementation | Purpose |
 | :--- | :--- | :--- |
-| `lint` | `go vet ./...` + AST checks | Static lints and forbidden calls |
+| `lint` | `go vet ./...` + AST checks | Static `go/ast` safety rules, doc comments, `"unsafe"` ban |
 | `typecheck` | `go build ./...` | Full package compilation check |
-| `unit tests` | `go test -run TestUnit ./internal/...` | Fast unit test execution |
-| `integration and architecture tests` | `go test -run 'TestIntegration\|TestArchitecture' ./internal/...` | HTTP endpoints and layer boundaries |
+| `unit tests` | `go test -race -run TestUnit ./internal/...` | Race-checked unit test execution |
+| `integration and architecture tests` | `go test -race -run 'TestIntegration\|TestArchitecture' ./internal/...` | Endpoints, layer boundaries, policy lock |
 | `cooldown` | `cmd/xtask/main.go` + `.github/dependabot.yml` | 3-day dependency cooldown enforcement |
 | `hygiene` | `cmd/xtask/hygiene.go` | Anti-leak, required docs, path checks |
 | `notices` | `cmd/xtask/notices.go` | License inventory parity |

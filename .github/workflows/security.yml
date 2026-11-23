@@ -27,6 +27,8 @@ jobs:
         run: |
           go mod verify
           go list -m -json all > dependency-inventory.json
+      - name: Run Go vulnerability scan
+        run: go tool -modfile=tools.mod govulncheck ./...
       - uses: actions/upload-artifact@v7
         with:
           name: dependency-inventory

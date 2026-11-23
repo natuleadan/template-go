@@ -4,6 +4,9 @@ import "errors"
 
 const maxOperandAbs int64 = 1_000_000_000
 
+// ErrOperandOutOfBounds reports an operand outside the safe template bounds.
+var ErrOperandOutOfBounds = errors.New("operand exceeds safe template bounds")
+
 // AddRequest defines the validated addition payload.
 type AddRequest struct {
 	A int64 `json:"a"`
@@ -19,7 +22,7 @@ type AddResponse struct {
 // ValidateAddRequest enforces safe operand bounds.
 func ValidateAddRequest(req AddRequest) error {
 	if req.A > maxOperandAbs || req.A < -maxOperandAbs || req.B > maxOperandAbs || req.B < -maxOperandAbs {
-		return errors.New("operand exceeds safe template bounds")
+		return ErrOperandOutOfBounds
 	}
 	return nil
 }

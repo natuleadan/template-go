@@ -1,3 +1,4 @@
+// Package core exposes the health, greeting, and modular math HTTP surface.
 package core
 
 import (
@@ -10,7 +11,7 @@ import (
 )
 
 // Version defines the baseline service version.
-const Version = "0.1.2"
+const Version = "0.1.0"
 
 // Greet returns a normalized greeting for the given name.
 func Greet(name string) string {
@@ -52,6 +53,13 @@ func NewMux() *http.ServeMux {
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
+	body, err := json.Marshal(payload)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
+	if _, err := w.Write(body); err != nil {
+		return
+	}
 }

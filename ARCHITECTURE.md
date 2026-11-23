@@ -40,6 +40,11 @@ The included `internal/modules/math/` module demonstrates this pattern with an a
 3. Add unit, integration, and layer boundary tests in `internal/core/core_test.go`.
 4. Run `go run ./cmd/xtask validate` to verify all eight gates pass.
 
+## Strict AST Policy & Tripwires
+
+- **AST Guardrails**: `cmd/xtask/lint.go` enforces `go vet ./...` plus native `go/ast` checks across `internal/` forbidding `"unsafe"`, dot imports, `init()`, `panic()`, `fmt.Print*`, `os.Exit`, `log.Fatal*`, `time.Sleep`, `context.Background`/`TODO`, `interface{}`, mutable package vars, boolean flag parameters, and unjustified `//nolint`, while requiring doc comments on exported symbols.
+- **Race & Policy Lock**: `cmd/xtask/main.go` runs tests with `-race`, and `internal/core/core_test.go` fails if any AST rule, `-race` flag, or 3-day cooldown setting is removed.
+
 ## Monorepo Variant Architecture
 
 When scaling into multiple Go services and shared libraries, adopt the `go.work` multi-module workspace layout:

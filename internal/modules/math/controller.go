@@ -11,6 +11,6 @@ func NewController(service *Service) *Controller {
 }
 
 // HandleAdd executes an addition request through Service.
-func (c *Controller) HandleAdd(a int64, b int64) (AddResponse, error) {
+func (c *Controller) HandleAdd(a, b int64) (AddResponse, error) {
 	return c.service.Add(AddRequest{A: a, B: b})
 }
