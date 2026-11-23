@@ -14,8 +14,13 @@ var (
 )
 
 func runCommitCheck(root string, args []string) error {
+	mode := ""
+	if len(args) >= 2 {
+		mode = args[0]
+	}
 	var msg string
-	if len(args) >= 2 && args[0] == "--file" {
+	switch mode {
+	case "--file":
 		if err := checkGitIdentity(root); err != nil {
 			return err
 		}
@@ -24,7 +29,7 @@ func runCommitCheck(root string, args []string) error {
 			return err
 		}
 		msg = string(raw)
-	} else if len(args) >= 2 && args[0] == "--range" {
+	case "--range":
 		cmd := exec.Command("git", "log", "--format=%B%x00", args[1])
 		cmd.Dir = root
 		out, err := cmd.Output()
@@ -41,10 +46,10 @@ func runCommitCheck(root string, args []string) error {
 			}
 		}
 		return nil
-	} else {
+	default:
 		raw, err := os.ReadFile(".git/COMMIT_EDITMSG")
 		if err != nil {
-			return fmt.Errorf("missing --file or --range: %v", err)
+			return fmt.Errorf("missing --file or --range: %w", err)
 		}
 		msg = string(raw)
 	}
@@ -91,7 +96,7 @@ func validateCommitText(raw string) error {
 			return fmt.Errorf("blank lines between bullets are forbidden")
 		}
 		if strings.Contains(strings.ToLower(line), "co-authored-by:") {
-			return fmt.Errorf("Co-authored-by trailers are forbidden")
+			return fmt.Errorf("co-authored-by trailers are forbidden")
 		}
 		bm := bulletRe.FindStringSubmatch(line)
 		if bm == nil {
@@ -117,7 +122,7 @@ func checkGitIdentity(root string) error {
 	nameCmd.Dir = root
 	nameOut, err := nameCmd.Output()
 	if err != nil {
-		return fmt.Errorf("git user.name not configured: %v", err)
+		return fmt.Errorf("git user.name not configured: %w", err)
 	}
 	if strings.TrimSpace(string(nameOut)) == "" {
 		return fmt.Errorf("git user.name must be configured")
@@ -126,7 +131,7 @@ func checkGitIdentity(root string) error {
 	emailCmd.Dir = root
 	emailOut, err := emailCmd.Output()
 	if err != nil {
-		return fmt.Errorf("git user.email not configured: %v", err)
+		return fmt.Errorf("git user.email not configured: %w", err)
 	}
 	if !strings.HasSuffix(strings.TrimSpace(string(emailOut)), noreplySuffix) {
 		return fmt.Errorf("git user.email must end with %q", noreplySuffix)

@@ -1,3 +1,4 @@
+// Package math provides the layered reference domain module.
 package math
 
 // Module wires the math domain layers together.

@@ -109,11 +109,11 @@ func runTypecheck(root string) error {
 }
 
 func runUnitTests(root string) error {
-	return runExec(root, "go", "test", "-run", "TestUnit", "./internal/...")
+	return runExec(root, "go", "test", "-race", "-run", "TestUnit", "./internal/...")
 }
 
 func runIntegrationTests(root string) error {
-	return runExec(root, "go", "test", "-run", "TestIntegration|TestArchitecture", "./internal/...")
+	return runExec(root, "go", "test", "-race", "-run", "TestIntegration|TestArchitecture", "./internal/...")
 }
 
 func runCooldown(root string) error {
@@ -135,15 +135,22 @@ func runCooldown(root string) error {
 	if !strings.Contains(string(dependabot), "default-days: 3") {
 		return fmt.Errorf("dependabot.yml must enforce 3-day cooldown")
 	}
+	toolsRaw, err := os.ReadFile(filepath.Join(root, "tools.mod"))
+	if err == nil {
+		tools := string(toolsRaw)
+		if strings.Contains(tools, "replace ") || strings.Contains(tools, "@latest") {
+			return fmt.Errorf("tools.mod must pin exact versions without replace or @latest")
+		}
+	}
 	return nil
 }
 
-func runExec(root string, name string, args ...string) error {
+func runExec(root, name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Dir = root
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
+		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }

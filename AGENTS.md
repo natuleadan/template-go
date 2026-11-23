@@ -9,14 +9,16 @@ Technical operating rules for this Go repository template.
 
 ## 2. Toolchain & Validation
 
+- Compiler & static safety: preserve every AST rule in `cmd/xtask/lint.go` and `-race` test execution in `cmd/xtask/main.go` (forbid `"unsafe"`, dot imports, `init()`, `panic`, `fmt.Print*`, `os.Exit`, `log.Fatal*`, `time.Sleep`, `context.Background`/`TODO`, `interface{}`, pointer-to-interface, embedded `sync.Mutex`, unchecked type assertions, mutable package globals, files over 500 lines, boolean parameters in exported functions, and bare `//nolint`).
+- Semantic analysis: `golangci-lint v2.15.0` runs 15 type-checked linters from the immutable `.golangci.yml` with `formatters: enable: []`; it is installed at a pinned version in CI and must not be replaced with `@latest`. `govulncheck v1.10.0` runs from the isolated `tools.mod` in `security.yml` only.
 - Enable hooks locally with `git config core.hooksPath .githooks` and run `go run ./cmd/xtask validate` (`TOTAL PASS=8 FAIL=0`) before opening or updating any pull request.
-- Do not run `gofmt` or automated code formatters in hooks, CI, or pre-commit steps.
+- Do not run `gofmt`, `goimports`, `gofumpt`, or any automated code formatter in hooks, CI, or pre-commit steps.
 
 ## 3. Code Layout & Architecture
 
 - Organize domain logic under `internal/modules/<domain>/` as a six-file layered modular layout (`entity.go`, `dto.go`, `repository.go`, `service.go`, `controller.go`, `module.go`).
 - Enforce unidirectional imports: `Controller` calls `Service` and `dto` (never `Repository`); `entity` and `dto` must not reference `service`, `repository`, or `controller`.
-- Keep every source and documentation file at or below **500 lines**.
+- Document all exported declarations in `internal/` with Go doc comments and keep every source and documentation file at or below **500 lines**.
 
 ## 4. Commit, Dependency & License Policy
 

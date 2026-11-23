@@ -1,0 +1,105 @@
+version: "2"
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+formatters:
+  enable: []
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - contextcheck
+    - errcheck
+    - errorlint
+    - exhaustive
+    - forbidigo
+    - gocritic
+    - gosec
+    - govet
+    - nilerr
+    - prealloc
+    - revive
+    - staticcheck
+    - unconvert
+    - wrapcheck
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+    exhaustive:
+      default-signifies-exhaustive: true
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    staticcheck:
+      checks:
+        - "all"
+    forbidigo:
+      forbid:
+        - pattern: '^fmt\.Print.*$'
+          msg: "use structured logging instead of fmt.Print*"
+        - pattern: '^time\.Sleep$'
+          msg: "avoid unconditional time.Sleep; use context-aware timers"
+        - pattern: '^context\.(Background|TODO)$'
+          msg: "propagate caller context instead of creating root context in domain code"
+    revive:
+      rules:
+        - name: exported
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: increment-decrement
+        - name: var-declaration
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unreachable-code
+        - name: redefines-builtin-id
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - hugeParam
+    wrapcheck:
+      ignore-sigs:
+        - .Errorf(
+        - errors.New(
+        - errors.Unwrap(
+        - errors.Join(
+  exclusions:
+    generated: strict
+    rules:
+      # cmd/xtask is the native automation runner and may print gate output.
+      - path: ^cmd/xtask/
+        linters:
+          - forbidigo
+          - wrapcheck
+      # Local dev/CI CLI only: repo files, pinned subprocesses and generated artifacts are trusted.
+      - path: ^cmd/xtask/
+        text: "G(122|204|301|304|306|702|703):"
+        linters:
+          - gosec
+      # Standard Go tests may use context roots and unexported test helpers.
+      - path: _test\.go$
+        linters:
+          - forbidigo
+          - gosec
+          - wrapcheck
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
