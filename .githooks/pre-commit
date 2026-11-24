@@ -3,3 +3,4 @@ set -eu
 go run ./cmd/xtask lint
 go run ./cmd/xtask typecheck
 go run ./cmd/xtask hygiene
+go run ./cmd/xtask notices --check
